@@ -28,5 +28,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
+      # 等 artifact 索引传播（deploy-pages 偶发查不到刚上传的 artifact）
+      - run: sleep 20
       - id: deployment
         uses: actions/deploy-pages@v4
