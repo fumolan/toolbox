@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0969da">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🧰%3C/text%3E%3C/svg%3E">
+<title>fumolan 的工具箱</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --fg: #1f2328; --muted: #59636e;
+    --line: #d1d9e0; --accent: #0969da; --ok: #1a7f37;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --card: #161b22; --fg: #e6edf3; --muted: #8b949e;
+      --line: #30363d; --accent: #58a6ff; --ok: #3fb950;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.65 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 22px; margin: 8px 0 2px; }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: 13px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px; margin-bottom: 16px;
+  }
+  a.tool {
+    display: flex; align-items: center; gap: 14px; text-decoration: none;
+    color: inherit;
+  }
+  .tool-icon {
+    font-size: 34px; width: 56px; height: 56px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-radius: 14px;
+  }
+  .tool-name { font-size: 17px; font-weight: 600; }
+  .tool-desc { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .tool-arrow { margin-left: auto; color: var(--muted); font-size: 20px; }
+  .card:hover { border-color: var(--accent); }
+  .foot { color: var(--muted); font-size: 12px; text-align: center; margin-top: 28px; }
+  .foot a { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧰 工具箱</h1>
+  <p class="sub">纯本地运行的网页小工具 · 所有处理都在你的浏览器里完成，不上传任何数据</p>
+
+  <div class="card">
+    <a class="tool" href="idphoto/">
+      <span class="tool-icon">🪪</span>
+      <span>
+        <span class="tool-name">证件照生成</span>
+        <div class="tool-desc">手机自拍 → 自动抠图换底 → 一寸/二寸/小二寸，可换正装 · 照片不离开手机</div>
+      </span>
+      <span class="tool-arrow">›</span>
+    </a>
+  </div>
+
+  <div class="foot">
+    <a href="https://github.com/fumolan/toolbox" target="_blank" rel="noopener">GitHub 仓库</a>
+    · 需要摄像头工具请用 HTTPS 访问（GitHub Pages 已自带）
+  </div>
+</div>
+</body>
+</html>

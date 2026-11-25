@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0969da">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🪪%3C/text%3E%3C/svg%3E">
+<title>证件照生成 · 纯本地</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --fg: #1f2328; --muted: #59636e;
+    --line: #d1d9e0; --accent: #0969da; --accent-fg: #fff;
+    --danger: #cf222e; --ok: #1a7f37; --chip-bg: #f0f2f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --card: #161b22; --fg: #e6edf3; --muted: #8b949e;
+      --line: #30363d; --accent: #58a6ff; --accent-fg: #0d1117;
+      --danger: #f85149; --ok: #3fb950; --chip-bg: #21262d;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font: 15px/1.65 "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px 14px calc(28px + env(safe-area-inset-bottom)); }
+  h1 { font-size: 20px; margin: 4px 0 2px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px; margin-bottom: 14px;
+  }
+  .card-head { font-weight: 600; margin-bottom: 10px; font-size: 15px; }
+  .muted { color: var(--muted); }
+  .status { min-height: 20px; font-size: 13px; color: var(--muted); margin-top: 8px; white-space: pre-wrap; }
+  .status.error { color: var(--danger); }
+  .status.ok { color: var(--ok); }
+
+  /* 按钮 */
+  button {
+    font: inherit; color: var(--fg); background: var(--chip-bg);
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 14px; cursor: pointer; touch-action: manipulation;
+  }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; font-weight: 600; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-row > button { flex: 1; min-width: 130px; }
+
+  /* 首页大按钮 */
+  .big-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .big-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 22px 10px; border-radius: 14px;
+    background: color-mix(in srgb, var(--accent) 8%, var(--card));
+    border: 1px solid var(--line); cursor: pointer; font: inherit; color: inherit;
+  }
+  .big-btn .ico { font-size: 34px; }
+  .big-btn .t { font-weight: 600; font-size: 15px; }
+  .big-btn .d { font-size: 12px; color: var(--muted); }
+
+  /* 相机视图 */
+  #viewCamera .cam-box {
+    position: relative; border-radius: 12px; overflow: hidden;
+    background: #000; border: 1px solid var(--line);
+  }
+  #camVideo { display: block; width: 100%; max-height: 68vh; object-fit: cover; }
+  #camVideo.mirror { transform: scaleX(-1); }
+  .cam-guide {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; pointer-events: none;
+  }
+  .cam-head {
+    width: min(52%, 240px); aspect-ratio: 0.78; border-radius: 50%;
+    border: 2px dashed rgba(255,255,255,0.85);
+    margin-bottom: auto; margin-top: 12%;
+  }
+  .cam-hint {
+    margin-top: auto; margin-bottom: 14px; padding: 6px 14px; border-radius: 999px;
+    background: rgba(0,0,0,0.55); color: #fff; font-size: 13px;
+  }
+  .cam-error { margin-bottom: 12px; }
+  .cam-controls { display: flex; gap: 12px; margin-top: 12px; }
+  .cam-controls > * { flex: 1; }
+  #shotBtn { flex: 0 0 auto; width: 76px; height: 76px; border-radius: 50%; font-size: 13px; font-weight: 700; }
+
+  /* 编辑器 */
+  .preview-frame {
+    display: flex; justify-content: center; padding: 6px 0 2px;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  #preview {
+    border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+    cursor: grab; touch-action: none; max-width: 100%;
+  }
+  #preview:active { cursor: grabbing; }
+  #previewMeta { text-align: center; font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .chips, .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 6px 12px; border-radius: 999px; font-size: 13px;
+    background: var(--chip-bg); border: 1px solid var(--line);
+  }
+  .chip.active {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-color: var(--accent); color: var(--accent); font-weight: 600;
+  }
+  .swatch { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 6px 10px; }
+  .swatch .dot { width: 15px; height: 15px; border-radius: 50%; border: 1px solid rgba(128,128,128,0.4); }
+  .swatch img { width: 26px; height: 26px; object-fit: contain; }
+  .swatch.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .seg { display: flex; gap: 8px; margin-bottom: 10px; }
+  .seg button { flex: 1; }
+  .seg button.active { background: var(--accent); color: var(--accent-fg); border-color: transparent; font-weight: 600; }
+  .style-chip .season { display: block; font-size: 10px; color: var(--muted); font-weight: 400; }
+  .chip.style-chip.active .season { color: inherit; opacity: 0.75; }
+
+  details { border: 1px solid var(--line); border-radius: 12px; background: var(--card); margin-bottom: 14px; }
+  details > summary {
+    padding: 12px 14px; font-weight: 600; cursor: pointer; list-style: none;
+  }
+  details > summary::before { content: "▸ "; color: var(--muted); }
+  details[open] > summary::before { content: "▾ "; }
+  details > .card-body { padding: 0 14px 14px; }
+  .slider-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 13px; }
+  .slider-row label { flex: none; width: 76px; color: var(--muted); }
+  .slider-row input[type=range] { flex: 1; }
+  .slider-row .val { flex: none; width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* 遮罩 loading */
+  #busy {
+    position: fixed; inset: 0; z-index: 50; display: none;
+    align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    backdrop-filter: blur(2px);
+  }
+  #busy.on { display: flex; }
+  .spinner {
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 4px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    border-top-color: var(--accent); animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #busyMsg { font-size: 14px; color: var(--fg); padding: 0 20px; text-align: center; }
+
+  .foot { color: var(--muted); font-size: 12px; text-align: center; margin-top: 22px; }
+  .foot a { color: var(--muted); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ① 首页 -->
+  <section id="viewHome" class="view active">
+    <h1>🪪 证件照生成</h1>
+    <p class="sub">自拍一张，自动抠图换底 · 全程在本机处理，照片不上传</p>
+
+    <div class="card">
+      <div class="big-actions">
+        <button class="big-btn" id="startCamBtn">
+          <span class="ico">📷</span><span class="t">拍摄照片</span>
+          <span class="d">调用前置摄像头</span>
+        </button>
+        <button class="big-btn" id="uploadBtn">
+          <span class="ico">🖼️</span><span class="t">相册选择</span>
+          <span class="d">已有照片 / 桌面端</span>
+        </button>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" class="hidden">
+      <div class="status" id="homeStatus"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">拍摄建议</div>
+      <ul class="muted" style="margin:0; padding-left: 20px; font-size: 13px;">
+        <li>站在<strong>纯色墙</strong>前，光线均匀，避免逆光</li>
+        <li>正面朝镜头，露出<strong>肩部以上</strong>，摘掉眼镜反光面</li>
+        <li>人像居中，头顶适当留白（后续可拖动微调）</li>
+      </ul>
+    </div>
+
+    <div class="btn-row">
+      <button id="demoBtn">试用示例照片</button>
+    </div>
+  </section>
+
+  <!-- ② 相机 -->
+  <section id="viewCamera" class="view" hidden>
+    <h1>📷 拍摄</h1>
+    <p class="sub">把脸放进虚线框，保持肩部在框内下方</p>
+    <div class="cam-box">
+      <video id="camVideo" autoplay playsinline muted class="mirror"></video>
+      <div class="cam-guide">
+        <div class="cam-head"></div>
+        <div class="cam-hint">正对镜头 · 露出肩部 · 背景尽量纯色</div>
+      </div>
+    </div>
+    <div class="status error cam-error hidden" id="camError"></div>
+    <div class="cam-controls">
+      <button id="flipBtn">🔄 翻转</button>
+      <button id="shotBtn">拍摄</button>
+      <button id="closeCamBtn">✕ 关闭</button>
+    </div>
+  </section>
+
+  <!-- ③ 编辑器 -->
+  <section id="viewEditor" class="view" hidden>
+    <div class="card">
+      <div class="preview-frame"><canvas id="preview"></canvas></div>
+      <div id="previewMeta"></div>
+      <div class="status" id="status"></div>
+      <div class="btn-row" style="margin-top: 8px;">
+        <button id="retakeBtn">🔄 重拍</button>
+        <button id="reuploadBtn">🖼️ 换照片</button>
+        <button id="fitBtn">🎯 人像复位</button>
+      </div>
+      <div class="seg" id="layerSeg" hidden style="margin-top: 10px;">
+        <button data-layer="person">🧍 调整人像</button>
+        <button data-layer="cloth">👔 调整衣服</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">规格与底色</div>
+      <div class="chips" id="sizeChips"></div>
+      <div class="swatches" id="bgSwatches" style="margin-top: 10px;"></div>
+    </div>
+
+    <details id="outfitCard">
+      <summary>👔 服装层：内置正装 / 上传自己的衣服照片</summary>
+      <div class="card-body">
+        <p class="muted" style="margin: 0 0 10px; font-size: 12px;">
+          流程：① 底板照片（拍照 / 相册）→ ② 服装层盖上去遮挡 → ③ 选规格底色导出。
+          上传的衣服照片会自动抠掉纯色背景；开启「调整衣服」后可直接在预览上拖动、双指缩放旋转。
+        </p>
+        <div class="seg" id="genderSeg">
+          <button data-g="m">男装</button>
+          <button data-g="f">女装</button>
+        </div>
+        <div class="chips" id="outfitChips"></div>
+        <div class="chips" id="variantChips" style="margin-top: 8px;"></div>
+
+        <!-- 自定义衣服照片的控制块 -->
+        <div id="clothControls" hidden style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line);">
+          <div class="btn-row">
+            <button id="clothUploadBtn">🖼️ 上传 / 更换衣服照片</button>
+            <button id="clothResetBtn">🎯 衣服复位</button>
+          </div>
+          <p class="muted" id="clothCutHint" style="margin: 6px 0 0; font-size: 12px;"></p>
+          <div class="slider-row">
+            <label>衣服大小</label>
+            <input type="range" id="clothScale" min="20" max="300" value="100">
+            <span class="val" id="clothScaleVal">100%</span>
+          </div>
+          <div class="slider-row">
+            <label>旋转</label>
+            <input type="range" id="clothRot" min="-45" max="45" value="0">
+            <span class="val" id="clothRotVal">0°</span>
+          </div>
+          <div class="slider-row">
+            <label>自动抠底</label>
+            <input type="checkbox" id="clothCutChk" checked>
+          </div>
+          <div class="slider-row" id="clothTolRow">
+            <label>抠图容差</label>
+            <input type="range" id="clothTol" min="6" max="60" value="24">
+            <span class="val" id="clothTolVal">24</span>
+          </div>
+        </div>
+
+        <!-- 内置贴片的微调滑杆 -->
+        <div id="builtinSliders">
+          <div class="slider-row">
+            <label>肩线高度</label>
+            <input type="range" id="shoulder" min="30" max="80" value="56">
+            <span class="val" id="shoulderVal">56%</span>
+          </div>
+          <div class="slider-row">
+            <label>服装宽度</label>
+            <input type="range" id="outfitW" min="80" max="160" value="115">
+            <span class="val" id="outfitWVal">115%</span>
+          </div>
+        </div>
+      </div>
+    </details>
+    <input type="file" id="clothInput" accept="image/*" class="hidden">
+
+    <div class="card">
+      <div class="card-head">导出</div>
+      <div class="btn-row">
+        <button class="primary" id="downloadBtn">⬇️ 下载 PNG</button>
+        <button id="copyBtn">📋 复制图片</button>
+        <button id="sheetBtn">🖨️ 六寸排版照</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <a href="../">← 工具箱</a> ·
+    <a href="https://github.com/fumolan/toolbox" target="_blank" rel="noopener">GitHub</a> ·
+    MediaPipe 本地分割，照片不上传
+  </div>
+</div>
+
+<!-- 全局 loading 遮罩 -->
+<div id="busy"><div class="spinner"></div><div id="busyMsg"></div></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
